@@ -15,11 +15,12 @@ import matplotlib.pyplot as plt
 # plt.subplot
 # set_ylim
 
+# отладочную информацию (сколько N и M можно ввести в файл)
 # придумать как выводить ровно столько файлов сколько шагов по времени (M-1 файлов), иначе в других может содержаться информация с прошлых запусков
 for k in range(0, 1000):
     #plt.close()
     plt.clf()
-    a = np.loadtxt('it_%04d.txt' % (k))
+    a = np.loadtxt('subdir/it_%04d.txt' % (k))
     #a = np.loadtxt('solution_array.txt')
     a = np.array(a, float)
 
@@ -43,7 +44,7 @@ for k in range(0, 1000):
     #plt.show()
 
 # было бы здорово сохранять в отдельную папку
-    plt.savefig('output_%04d.png' % (k), dpi=150, bbox_inches='tight')
+    plt.savefig('subdir/output_%04d.png' % (k), dpi=150, bbox_inches='tight')
 
 
 
