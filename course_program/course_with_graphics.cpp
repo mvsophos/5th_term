@@ -156,7 +156,7 @@ void setup_array(double *u, double *phalf1, double *phalf, double *p_half, doubl
 // N - это точек в дискретизации пространства, M - шагов по времени
 void solver_in_time(double *u, double *phalf1, double *phalf, double *p_half, double *right_part, double *p0, double *f, double t_1, double h, int N, int M){
     FILE *myfile = NULL;
-    char name_of_file[20];
+    char name_of_file[30];
     for (int j = 0; j < M; j++){
         setup_array(u, phalf1, phalf, p_half, right_part, p0, t_1, N);
         solver(p_half, phalf, phalf1, p0, N);
@@ -164,7 +164,7 @@ void solver_in_time(double *u, double *phalf1, double *phalf, double *p_half, do
 
 
         // пишем решение в файл
-        int n = sprintf(name_of_file, "it_%04d.txt", j + 1);
+        int n = sprintf(name_of_file, "subdir/it_%04d.txt", j + 1);
         myfile = fopen(name_of_file, "w");
         for (int i = 0; i < N; i++) {
             fprintf(myfile, "%lf  ", right_part[i]);
@@ -192,7 +192,8 @@ int main(int argc, char *argv[])
 
     //N = (int)argv[1];
     if (!((argc == 3) && (sscanf(argv[1], "%d", &N) == 1) && (sscanf(argv[2], "%d", &M) == 1))){
-        printf("Укажите N (число точек)\n");
+        printf("Используйте ввод: ./a.out  N  M\n");
+        //printf("Укажите N (число точек)\n");
         return -1;
     }
     h = length_of_segment / N;
@@ -217,8 +218,10 @@ int main(int argc, char *argv[])
     print_array(p0, N);
 
     // myfile = fopen(filename_solution, "w");
-    char name_of_file[20];
-    int n = sprintf(name_of_file, "it_%04d.txt", 0);
+    char name_of_file[30];
+    //char name_of_file[20];
+    //int n = sprintf(name_of_file, "it_%04d.txt", 0);
+    int n = sprintf(name_of_file, "subdir/it_%04d.txt", 0);
     //printf("%d\n", n);
     myfile = fopen(name_of_file, "w");
     for (int i = 0; i < N; i++) {
