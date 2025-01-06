@@ -1,3 +1,4 @@
+import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -16,8 +17,13 @@ import matplotlib.pyplot as plt
 # set_ylim
 
 # отладочную информацию (сколько N и M можно ввести в файл)
-# придумать как выводить ровно столько файлов сколько шагов по времени (M-1 файлов), иначе в других может содержаться информация с прошлых запусков
-for k in range(0, 1000):
+
+path = './subdir'
+num_of_files = len([f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))])
+print(num_of_files)
+
+
+for k in range(0, num_of_files):
     #plt.close()
     plt.clf()
     a = np.loadtxt('subdir/it_%04d.txt' % (k))
@@ -44,7 +50,7 @@ for k in range(0, 1000):
     #plt.show()
 
 # было бы здорово сохранять в отдельную папку
-    plt.savefig('subdir/output_%04d.png' % (k), dpi=150, bbox_inches='tight')
+    plt.savefig('subdir_png/output_%04d.png' % (k), dpi=150, bbox_inches='tight')
 
 
 
