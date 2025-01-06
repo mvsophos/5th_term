@@ -229,14 +229,18 @@ int main(int argc, char *argv[])
     }
     fclose(myfile);
 
+
+
+
     setup_array(u, phalf1, phalf, p_half, right_part, p0, t_1, N);
     // print_matrix(phalf1, phalf, p_half, right_part, N);
     solver(p_half, phalf, phalf1, right_part, N);
     // print_matrix(phalf1, phalf, p_half, right_part, N);
-
     solver_in_time(u, phalf1, phalf, p_half, right_part, right_part, f, t_1, h, N, M - 1);
-
     // print_matrix(phalf1, phalf, p_half, right_part, N);
+
+
+
 
     double o = 0;
     for (int i = 0; i < N; i++) o += right_part[i];
