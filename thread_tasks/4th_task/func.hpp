@@ -25,7 +25,7 @@ public:
     double start = 0;
     double finish = 0;
     double time = 0;
-    char *name = nullptr;
+    char *filename = nullptr;
     int count = 0;
 };
 
@@ -42,9 +42,9 @@ double get_full_time() {
 }
 
 // чтение массива из файла
-int read_array(double *a, int n, const char *name) {
+int read_array(double *a, int n, char *filename) {
     int i;
-    FILE *fp = fopen(name, "r");
+    FILE *fp = fopen(filename, "r");
     if (fp == nullptr) return -1;
     for (i = 0; i < n; i++) {
         if (fscanf(fp, "%lf", a + i) != 1) break;
@@ -75,17 +75,17 @@ void *thread_func(void *ptr) {
     int p = arg->p;
     int k = arg->k;
     
-    char *name = arg->name;
+    char *filename = arg->filename;
     double *a = arg->a;
     int begin = arg->begin;
     int end = arg->end;
     int n = arg->n;
 
     reduce_summa_int(p);
-    if (name != nullptr) {
+    if (filename != nullptr) {
         int ret = 0;
         if (k == 0) {
-            ret = read_array(a, n, name);
+            ret = read_array(a, n, filename);
         }
         reduce_summa_int(p, &ret);
         if (ret < 0) {

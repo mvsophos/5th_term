@@ -36,7 +36,7 @@ int main (int argc, char *argv[]) {
         a[k].n = n;
         a[k].p = p;
         a[k].k = k;
-        a[k].name = filename;
+        a[k].filename = filename;
         a[k].a = data;
     }
 
