@@ -96,8 +96,7 @@ void *thread_func(void *ptr) {
             arg->error = io_status::error_read;
             return nullptr;
         }
-        else
-            arg->error = io_status::success;
+        else arg->error = io_status::success;
     }
     else return nullptr;
 
