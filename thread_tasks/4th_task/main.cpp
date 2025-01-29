@@ -8,97 +8,77 @@
 int main (int argc, char *argv[]) {
     int p, n;
     char *filename = nullptr;
-    if (!(argc == 4 && sscanf(argv[1], "%d", &p) == 1 && sscanf(argv[2], "%d", &n) == 1)) {
+    if ((!(argc == 4 && sscanf(argv[1], "%d", &p) == 1 && sscanf(argv[2], "%d", &n) == 1)) || (argv[3] == nullptr)) {
         printf("Usage: %s  p  n  filename\n", argv[0]);
         return 900;
     }
-
-    if (argv[3] != nullptr) filename = argv[3];
-    else {
-        printf("Usage: %s  p  n  filename\n", argv[0]);
-        return 900;
-    }
-    if (p > n) p = n;
+    else filename = argv[3];
     
-    // массив чисел
-    double *a;
-    a = new double [n];
-    if (a == nullptr) {
+    double *data;
+    data = new double[n];
+    if (data == nullptr) {
         printf("Ошибка выделения памяти\n");
         return 300;
     }
 
-    // массив аргументов потоков
     int k;
-    args *arg = new args[p];
-    if (arg == nullptr) {
-        delete [] a;
+    if (p > n) p = n;
+    Args *a = new Args[p];
+    if (a == nullptr) {
+        delete [] data;
         printf("Ошибка выделения памяти\n");
         return 300;
     }
     for (k = 0; k < p; k++) {
-        arg[k].begin = k * n / p;
-        arg[k].end = (k + 1) * n / p - 1;
+        a[k].begin = k * n / p;
+        a[k].end = (k + 1) * n / p - 1;
 
-        arg[k].p = p;
-        arg[k].k = k;
-        arg[k].n = n;
-        arg[k].name = filename;
-        arg[k].a = a;
+        a[k].n = n;
+        a[k].p = p;
+        a[k].k = k;
+        a[k].name = filename;
+        a[k].a = data;
     }
 
     
 
-    pthread_t *threads = new pthread_t [p];
-    if (threads == nullptr) {
-        printf("Ошибка выделения памяти для потоков\n");
-        delete [] a;
-        delete [] arg;
-        return 300;
-    }
-    double elapsed = get_full_time(); // начинаем засекать время
+    double time = get_full_time(); // начинаем засекать время
     for (k = 1; k < p; k++) {
-        pthread_create(threads + k, 0, thread_func, arg + k);
+        if (pthread_create(&a[k].tid, nullptr, thread_func, a + k)) {
+            printf("Ошибка при создании потока %d\n", k);
+        }
     }
-    thread_func(arg + 0);
-    elapsed = get_full_time() - elapsed; // закончили засекать время
+    thread_func(a + 0);
+    
+    for (k = 1; k < p; k++) pthread_join(a[k].tid, 0);
+    time = get_full_time() - time; // закончили засекать время
 
-    for (k = 1; k < p; k++) {
-        pthread_join(threads[k], 0);
-    }
-
-    switch (arg[0].error) {
+    switch (a[0].error) {
     case io_status::undef:
         printf("Неизвестная ошибка\n");
-        delete [] arg;
-        delete [] threads;
         delete [] a;
+        delete [] data;
         return -1000;
     case io_status::error_open:
         printf("Не открылся файл %s\n", filename);
-        delete [] arg;
-        delete [] threads;
         delete [] a;
+        delete [] data;
         return 1;
     case io_status::error_read:
         printf("Не прочитался файл %s\n", filename);
-        delete [] arg;
-        delete [] threads;
         delete [] a;
+        delete [] data;
         return 2;
     case io_status::success:
         break;
     }
 
     printf("RESULT %3d: ", p);
-    print_array(a, n); // выводим массив
-    for (k = 0; k < p; k++) {
-        printf("Поток %d: %.2f\n", arg[k].k, arg[k].t);
-    }
-    printf("Общее время:        %.2f\n", elapsed);
-    printf("Изменено элементов: %d\n", arg[0].res);
-    delete [] arg;
-    delete [] threads;
+    print_array(data, n); // выводим массив
+    for (k = 0; k < p; k++) printf("Поток %d: %.2f\n", a[k].k, a[k].time);
+    printf("Общее время:        %.2f\n", time);
+    printf("Изменено элементов: %d\n", a[0].count);
     delete [] a;
+    delete [] data;
     return 0;
 }

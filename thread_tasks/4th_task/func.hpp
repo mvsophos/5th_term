@@ -11,7 +11,9 @@ enum class io_status {
     undef, error_open, error_read, success
 };
 
-struct args {
+class Args {
+public:
+    pthread_t tid = -1;
     int p = 0;
     int n = 0;
     io_status error = io_status::undef;
@@ -20,27 +22,27 @@ struct args {
     double *a = nullptr;
     int begin = 0;
     int end = 0;
-    double begin_bound = 0;
-    double end_bound = 0;
-    double t = 0;
+    double start = 0;
+    double finish = 0;
+    double time = 0;
     char *name = nullptr;
-    int res = 0;
+    int count = 0;
 };
-
-double get_full_time() {
-    struct timeval buf;
-    gettimeofday(&buf, 0);
-    return buf.tv_sec + buf.tv_usec / 1.e6;
-}
 
 double get_cpu_time() {
     struct rusage buf;
     getrusage(RUSAGE_THREAD, &buf);
-    return buf.ru_utime.tv_sec + buf.ru_utime.tv_usec / 1.e6;
+    return buf.ru_utime.tv_sec + buf.ru_utime.tv_usec * 1.e-6;
 }
 
-// чтение и вывод массива
-int read(double *a, int n, const char *name) {
+double get_full_time() {
+    struct timeval buf;
+    gettimeofday(&buf, 0);
+    return buf.tv_sec + buf.tv_usec * 1.e-6;
+}
+
+// чтение массива из файла
+int read_array(double *a, int n, const char *name) {
     int i;
     FILE *fp = fopen(name, "r");
     if (fp == nullptr) return -1;
@@ -55,6 +57,7 @@ int read(double *a, int n, const char *name) {
     return 0;
 }
 
+// вывод массива
 void print_array(double *a, int n) {
     for(int i = 0; i < n; i++) printf("%8.5lf ", a[i]);
     printf("\n");
@@ -64,11 +67,11 @@ void print_array(double *a, int n) {
 
 void reduce_summa_int(int p, int *a = nullptr);
 void reduce_summa_int(int p, int *a);
-void reduce_sum(args *ptr);
-void solve(args *ptr);
+void reduce_sum(Args *ptr);
+void solve(Args *ptr);
 
 void *thread_func(void *ptr) {
-    args *arg = (args*)ptr;
+    Args *arg = (Args*)ptr;
     int p = arg->p;
     int k = arg->k;
     
@@ -78,21 +81,11 @@ void *thread_func(void *ptr) {
     int end = arg->end;
     int n = arg->n;
 
-    cpu_set_t cpu;
-    CPU_ZERO(&cpu);
-    int n_cpus = get_nprocs();
-    int cpu_id = n_cpus - 1 - (k % n_cpus);
-    CPU_SET(cpu_id, &cpu);
-    pthread_t tid = pthread_self();
-    pthread_setaffinity_np(tid, sizeof (cpu), &cpu);
-
-    memset(a + begin, 0, (end - begin + 1) * sizeof(double));
-
     reduce_summa_int(p);
     if (name != nullptr) {
         int ret = 0;
         if (k == 0) {
-            ret = read(a, n, name);
+            ret = read_array(a, n, name);
         }
         reduce_summa_int(p, &ret);
         if (ret < 0) {
@@ -108,18 +101,17 @@ void *thread_func(void *ptr) {
     }
     else return nullptr;
 
-    if (arg->begin > 0) arg->begin_bound = a[begin - 1];
-    if (arg->end < n - 1) arg->end_bound = a[end + 1];
+    if (arg->begin > 0) arg->start = a[begin - 1];
+    if (arg->end < n - 1) arg->finish = a[end + 1];
 
     if (k == 0) {
         printf("Массив:     ");
         print_array(a, n);
     }
     reduce_summa_int(p);
-    double t = get_cpu_time();
+    arg->time = get_cpu_time();
     solve(arg);
-    t = get_cpu_time() - t;
-    arg->t = t;
+    arg->time = get_cpu_time() - arg->time;
     return nullptr;
 }
 
@@ -128,27 +120,27 @@ double osborn(double elem1, double middle, double elem2) {
     else return middle;
 }
 
-void solve(args *ptr) {
+void solve(Args *ptr) {
     int i;
     int n = ptr->n;
     double *a = ptr->a;
     int begin = ptr->begin;
     int end = ptr->end;
-    double begin_bound = ptr->begin_bound;
-    double end_bound = ptr->end_bound;
+    double start = ptr->start;
+    double finish = ptr->finish;
     double s, prev;
     if (begin > 0) {
         if (end > begin) {
-            s = osborn(begin_bound, a[begin], a[begin + 1]);
+            s = osborn(start, a[begin], a[begin + 1]);
             prev = a[begin];
             a[begin] = s;
-            ptr->res++;
+            ptr->count += 1;
         }
         else if (end < n - 1) {
-            s = osborn(begin_bound, a[begin], end_bound);
+            s = osborn(start, a[begin], finish);
             prev = a[begin];
             a[begin] = s;
-            ptr->res++;
+            ptr->count += 1;
         }
         else prev = a[begin];
     }
@@ -158,35 +150,35 @@ void solve(args *ptr) {
         s = osborn(prev, a[i], a[i + 1]);
         prev = a[i];
         a[i] = s;
-        ptr->res++;
+        ptr->count += 1;
     }
     if (i == end) {
         if (end < n - 1) {
-            s = osborn(prev, a[i], end_bound);
+            s = osborn(prev, a[i], finish);
             a[i] = s;
-            ptr->res++;
+            ptr->count += 1;
         }
     }
     reduce_sum(ptr);
 }
 
-void reduce_sum(args *ptr) {
+void reduce_sum(Args *ptr) {
     static pthread_mutex_t mutex   = PTHREAD_MUTEX_INITIALIZER;
     static pthread_cond_t cond_in  = PTHREAD_COND_INITIALIZER;
     static pthread_cond_t cond_out = PTHREAD_COND_INITIALIZER;
     static int t_in = 0;
     static int t_out = 0;
-    static int res = 0;
+    static int r = 0;
     int p = ptr->p;
     pthread_mutex_lock(&mutex);
-    res += ptr->res;
+    r += ptr->count;
     t_in++;
     if (t_in >= p) {
         t_out = 0;
         pthread_cond_broadcast(&cond_in);
     }
     else while (t_in < p) pthread_cond_wait(&cond_in, &mutex);
-    ptr->res = res;
+    ptr->count = r;
     t_out++;
     if (t_out >= p) {
         t_in = 0;
@@ -196,7 +188,7 @@ void reduce_sum(args *ptr) {
     pthread_mutex_unlock(&mutex);
 }
 
-void reduce_summa_int(int p, int *a){
+void reduce_summa_int(int p, int *a) {
     static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
     static pthread_cond_t c_in = PTHREAD_COND_INITIALIZER;
     static pthread_cond_t c_out = PTHREAD_COND_INITIALIZER;
